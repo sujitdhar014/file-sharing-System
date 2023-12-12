@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Login page</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="#">file-sharing System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup"
+                aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNavAltMarkup" style="justify-content: flex-end;">
+                <div class="navbar-nav">
+                    <a class="nav-link" href="/">Home</a>
+                    <a class="nav-link active" href="/files" style="margin-right: 10px!important;">Files</a>
+                    <a class="nav-link btn btn-primary text-light" href="/logout"><i
+                            class="fa-solid fa-right-to-bracket fa-flip-horizontal"></i>&nbsp;&nbsp;Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        {% if auth_token_hash == default_auth_token_hash %}
+
+        {% endif %}
+
+        <div class="container py-4 ">
+            <div class="p-2 bg-secondary bg-success text-light rounded">
+                <div class="container">
+                    <h3 class="display-3">Secure file-sharing System</h3>
+                </div>
+            </div>
+            <style>
+                @media (min-width: 1200px) {
+                    .display-3 {
+                        font-size: 4rem;
+                        text-align: center;
+                    }
+                }
+            </style>
+
+            <div class="row pt-5">
+                <div class="col-12">
+                    <div class="card rounded">
+                        <div class="card-body">
+                            {% if not files %}
+                            <h5 class="card-title">No files found</h5>
+                            <p class="card-text">You have no files uploaded yet. Upload some using the upload form
+                                below.
+                            </p>
+                            {% else %}
+                            <h5 class="card-title m-0">Total of <strong>{{ files|length }}</strong> files uploaded.</h5>
+                            {% endif %}
+
+                            <div class="input-group mt-3">
+                                <span class="input-group-text">Choose file</span>
+                                <input id="file-input" class="form-control" type="file" name="file" required>
+                                <button onclick="upload_file()" class="btn btn-primary btn-block">Upload</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% for file in files %}
+                <div class="col-lg-3 col-md-6 col-sm-12 pt-2">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ file.name }}</h5>
+                            <p class="card-text p-0 m-0"><strong>File type:</strong> {{ file.type }}</p>
+                            <p class="card-text p-0 m-0"><strong>File size:</strong> {{ file.size }}</p>
+                            <p class="card-text p-0 m-0"><strong>Upload date:</strong> {{ file.date }}</p>
+                        </div>
+                        <div class="card-footer">
+                            <a href="{{ file.path }}" class="btn btn-success"><i class="fa-solid fa-eye"></i></a>
+                            <a onclick="download_file('{{ file.path }}')" class="btn btn-primary"><i
+                                    class="fa-solid fa-download"></i></a>
+                            <a onclick="rename_file('{{ file.rename_path }}')" class="btn btn-warning"><i
+                                    class="fa-solid fa-pen-to-square"></i></a>
+                            <a onclick="delete_file('{{ file.delete_path }}')" class="btn btn-danger"><i
+                                    class="fa-solid fa-trash-can"></i></a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="p-4 bg-light">
+        </div>
+
+        <script>
+            function delete_file(path) {
+                if (confirm("Are you sure you want to delete this file?")) {
+                    fetch(path, {
+                        method: 'GET'
+                    }).then(function (response) {
+                        if (response.status == 200) {
+                            window.location.reload();
+                        } else {
+                            alert("An error occurred while deleting the file.");
+                        }
+                    });
+                }
+            }
+
+            function rename_file(path) {
+                let new_name = prompt("Please enter the new name for this file.");
+                if (new_name) {
+                    fetch(path, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            new_name: new_name
+                        })
+                    }).then(function (response) {
+                        if (response.status == 200) {
+                            window.location.reload();
+                        } else {
+                            alert("An error occurred while renaming the file.");
+                        }
+                    });
+                }
+            }
+
+            function upload_file() {
+                let file = document.getElementById("file-input").files[0];
+                let authorization = "{{ auth_token_hash }}";
+
+                let formData = new FormData();
+                formData.append("file", file);
+
+                fetch("/api/upload", {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "Authorization": authorization
+                    }
+                }).then(function (response) {
+                    if (response.status == 200) {
+                        window.location.reload();
+                    } else {
+                        alert("An error occurred while uploading the file.");
+                    }
+                });
+            }
+
+            function download_file(path) {
+                let new_path = path.replace("/view/", "/view/raw/");
+                console.log(new_path);
+
+                let link = document.createElement("a");
+                link.href = new_path;
+                link.download = path.split("/").pop();
+                document.body.appendChild(link);
+                link.click();
+
+                document.body.removeChild(link);
+                delete link;
+            }
+
+            var alertList = document.querySelectorAll('.alert');
+            alertList.forEach(function (alert) {
+                new bootstrap.Alert(alert)
+            })
+        </script>
+
+</body>
+
+
+</html>
